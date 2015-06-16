@@ -23,11 +23,7 @@ addEventListener('DOMContentLoaded', resolve);
 Polymer = {
 Settings: function () {
 var user = window.Polymer || {};
-location.search.slice(1).split('&').forEach(function (o) {
-o = o.split('=');
-o[0] && (user[o[0]] = o[1] || true);
-});
-var wantShadow = user.dom === 'shadow';
+var wantShadow = user.dom !== 'shady';
 var hasShadow = Boolean(Element.prototype.createShadowRoot);
 var nativeShadow = hasShadow && !window.ShadowDOMPolyfill;
 var useShadow = wantShadow && hasShadow;
