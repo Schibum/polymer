@@ -23,7 +23,11 @@ addEventListener('DOMContentLoaded', resolve);
 Polymer = {
 Settings: function () {
 var user = window.Polymer || {};
-var wantShadow = user.dom !== 'shady';
+location.search.slice(1).split('&').forEach(function (o) {
+o = o.split('=');
+o[0] && (user[o[0]] = o[1] || true);
+});
+var wantShadow = user.dom === 'shadow';
 var hasShadow = Boolean(Element.prototype.createShadowRoot);
 var nativeShadow = hasShadow && !window.ShadowDOMPolyfill;
 var useShadow = wantShadow && hasShadow;
@@ -80,13 +84,6 @@ dumpRegistrations: function () {
 this.registrations.forEach(this._regLog);
 }
 };
-Object.defineProperty(window, 'currentImport', {
-enumerable: true,
-configurable: true,
-get: function () {
-return (document._currentScript || document.currentScript).ownerDocument;
-}
-});
 Polymer.Base = {
 _addFeature: function (feature) {
 this.extend(this, feature);
