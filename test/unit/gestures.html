@@ -12,7 +12,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 <head>
   <meta charset="utf-8">
 
-  <script src="../../../webcomponentsjs/webcomponents-lite.js"></script>
+  <script src="../../../webcomponentsjs/webcomponents.js"></script>
   <script src="../../../web-component-tester/browser.js"></script>
 
   <link rel="import" href="../../polymer.html">
@@ -38,21 +38,33 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
       test('tap on x-foo and check localTarget and rootTarget', function() {
         var foo = app.$.foo;
-        foo.dispatchEvent(new CustomEvent('click'));
-        assert.equal(app._testLocalTarget, foo);
-        assert.equal(app._testRootTarget, foo);
+        foo.dispatchEvent(new CustomEvent('click', {bubbles: true}));
+        assert.equal(app._testLocalTarget, app, 'local target');
+        assert.equal(app._testRootTarget, foo, 'root target');
       });
 
-      test('tap on x-foo.div and check localTarget and rootTarget', function() {
+      test('tap on x-foo.div and check target info', function() {
         var foo = app.$.foo;
         var div = foo.$.div;
-        div.dispatchEvent(new CustomEvent('click'));
-        assert.equal(app._testLocalTarget, foo);
-        assert.equal(app._testRootTarget, div);
-        assert.equal(foo._testLocalTarget, div);
-        assert.equal(foo._testRootTarget, div);
+        div.dispatchEvent(new CustomEvent('click', {bubbles: true}));
+        assert.equal(app._testLocalTarget, app, 'app local target');
+        assert.equal(app._testRootTarget, div, 'app root target');
+        assert.equal(foo._testLocalTarget, foo, 'foo local target');
+        assert.equal(foo._testRootTarget, div, 'foo root target');
       });
 
+      test('HTMLElement.click triggers tap', function() {
+        // put the element off screen to prevent x/y weirdness from .click()
+        app.style.cssText = 'position: absolute; left: -1000px; top: -1000px;';
+        // make a mousedown *very* far away to tickle the distance check
+        var ev = new CustomEvent('mousedown');
+        ev.clientX = 1e8;
+        ev.clientY = 1e8;
+        app.dispatchEvent(ev);
+        app.click();
+        assert.equal(app._testLocalTarget, app, 'app local target');
+        assert.equal(app._testRootTarget, app, 'app root target');
+      });
     });
 
     suite('Event Setup and Teardown', function() {
@@ -69,12 +81,17 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           assert.equal(obj.mousedown.downup, 2, 'mousedown downup');
           assert.equal(obj.mousedown.track, 1, 'mousedown track');
           assert.equal(obj.mousedown.tap, 1, 'mousedown tap');
+          assert.equal(obj.mousedown._count, 4, 'total mousedown');
           assert.equal(obj.touchstart.downup, 2, 'touchstart downup');
-          assert.equal(obj.touchmove.track, 1, 'touchmove track');
           assert.equal(obj.touchstart.tap, 1, 'touchstart tap');
+          assert.equal(obj.touchstart.track, 1, 'touchstart track');
+          assert.equal(obj.touchstart._count, 4, 'total touchstart');
+          assert.equal(obj.touchmove.track, 1, 'touchmove track');
+          assert.equal(obj.touchmove._count, 1, 'total touchmove');
           assert.equal(obj.touchend.downup, 2, 'touchend downup');
           assert.equal(obj.touchend.track, 1, 'touchend track');
           assert.equal(obj.touchend.tap, 1, 'touchend tap');
+          assert.equal(obj.touchend._count, 4, 'total touchend');
         });
 
         test('on-*', function() {
@@ -83,12 +100,17 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           assert.equal(obj.mousedown.downup, 2, 'mousedown downup');
           assert.equal(obj.mousedown.track, 1, 'mousedown track');
           assert.equal(obj.mousedown.tap, 1, 'mousedown tap');
+          assert.equal(obj.mousedown._count, 4, 'total mousedown');
           assert.equal(obj.touchstart.downup, 2, 'touchstart downup');
-          assert.equal(obj.touchmove.track, 1, 'touchmove track');
           assert.equal(obj.touchstart.tap, 1, 'touchstart tap');
+          assert.equal(obj.touchstart.track, 1, 'touchstart track');
+          assert.equal(obj.touchstart._count, 4, 'total touchstart');
+          assert.equal(obj.touchmove.track, 1, 'touchmove track');
+          assert.equal(obj.touchmove._count, 1, 'total touchmove');
           assert.equal(obj.touchend.downup, 2, 'touchend downup');
           assert.equal(obj.touchend.track, 1, 'touchend track');
           assert.equal(obj.touchend.tap, 1, 'touchend tap');
+          assert.equal(obj.touchend._count, 4, 'total touchend');
         });
 
         test('dynamic', function() {
@@ -116,12 +138,16 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           assert.equal(obj.mousedown.downup, 0, 'mousedown downup');
           assert.equal(obj.mousedown.track, 0, 'mousedown track');
           assert.equal(obj.mousedown.tap, 0, 'mousedown tap');
+          assert.equal(obj.mousedown._count, 0, 'total mousedown');
           assert.equal(obj.touchstart.downup, 0, 'touchstart downup');
+          assert.equal(obj.touchstart._count, 0, 'total touchstart');
           assert.equal(obj.touchmove.track, 0, 'touchmove track');
+          assert.equal(obj.touchmove._count, 0, 'total touchmove');
           assert.equal(obj.touchstart.tap, 0, 'touchstart tap');
           assert.equal(obj.touchend.downup, 0, 'touchend downup');
           assert.equal(obj.touchend.track, 0, 'touchend track');
           assert.equal(obj.touchend.tap, 0, 'touchend tap');
+          assert.equal(obj.touchend._count, 0, 'total touchend');
         });
 
         test('on-*', function(){
@@ -134,12 +160,16 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           assert.equal(obj.mousedown.downup, 0, 'mousedown downup');
           assert.equal(obj.mousedown.track, 0, 'mousedown track');
           assert.equal(obj.mousedown.tap, 0, 'mousedown tap');
+          assert.equal(obj.mousedown._count, 0, 'total mousedown');
           assert.equal(obj.touchstart.downup, 0, 'touchstart downup');
+          assert.equal(obj.touchstart._count, 0, 'total touchstart');
           assert.equal(obj.touchmove.track, 0, 'touchmove track');
+          assert.equal(obj.touchmove._count, 0, 'total touchmove');
           assert.equal(obj.touchstart.tap, 0, 'touchstart tap');
           assert.equal(obj.touchend.downup, 0, 'touchend downup');
           assert.equal(obj.touchend.track, 0, 'touchend track');
           assert.equal(obj.touchend.tap, 0, 'touchend tap');
+          assert.equal(obj.touchend._count, 0, 'total touchend');
         });
 
         test('dynamic', function(){
@@ -172,7 +202,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       test('target finding returns null outside the window', function() {
         var actual = Polymer.Gestures.deepTargetFind(-1, -1);
         assert.equal(actual, null);
-      })
+      });
 
       test('find the div in document', function() {
         var x = divLocation.left, y = divLocation.top;
@@ -218,8 +248,248 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       });
     });
 
-    // TODO(dfreedm): Add more gesture tests!
+    suite('Prevention', function() {
+      var el;
+      setup(function() {
+        el = document.createElement('x-prevent');
+        document.body.appendChild(el);
+      });
+      teardown(function() {
+        el.parentNode.removeChild(el);
+        Polymer.Gestures.resetMouseCanceller();
+      });
 
+      test('tap', function() {
+        var ev = new CustomEvent('mousedown', {
+          bubbles: true,
+          cancelable: true
+        });
+        el.dispatchEvent(ev);
+        assert.equal(el.stream.length, 1, 'one event dispatched');
+        assert.equal(el.stream[0].type, 'down', 'was down event');
+        assert.equal(el.stream[0].defaultPrevented, true, 'was prevented');
+        assert.equal(ev.defaultPrevented, true, 'base event was prevented');
+      });
+
+      test('track', function() {
+        var ev = new CustomEvent('mousedown', {
+          bubbles: true,
+          cancelable: true
+        });
+        ev.clientX = ev.clientY = 0;
+        el.dispatchEvent(ev);
+        assert.equal(el.stream.length, 1);
+        for (var i = 0; i < 10; i++) {
+          ev = new CustomEvent(
+            i === 9 ? 'mouseup' : 'mousemove',
+            {bubbles: true, cancelable: true}
+          );
+          ev.clientX = ev.clientY = 10 * i;
+          el.dispatchEvent(ev);
+        }
+        assert.equal(el.stream.length, 2, 'expected only down and up');
+        assert.equal(el.stream[0].type, 'down', 'down was found');
+        assert.equal(el.stream[0].defaultPrevented, true, 'down was prevented');
+        assert.equal(el.stream[1].type, 'up', 'up was found');
+      });
+
+      test('nested track and tap with touch', function() {
+        el.parentNode.removeChild(el);
+        el = document.createElement('x-nested-prevent');
+        var child = el.$.child;
+        document.body.appendChild(el);
+        var options = {bubbles: true, cancelable: true};
+
+        var bgr = el.getBoundingClientRect();
+        var clientX = bgr.left + (bgr.width / 2);
+        var clientY = bgr.top + (bgr.bottom / 2);
+        var ev = new CustomEvent('touchstart', options);
+        ev.touches = ev.changedTouches = [
+          {
+            clientX: clientX,
+            clientY: clientY,
+            identifier: 1,
+            target: child
+          }
+        ];
+        ev.clientX = clientX;
+        ev.clientY = clientY;
+        child.dispatchEvent(ev);
+
+        for (var i = 0; i < 10; i++) {
+          clientX += 1;
+          ev = new CustomEvent(i === 9 ? 'touchend' : 'touchmove', options);
+          ev.touches = ev.changedTouches = [
+            {
+              clientX: clientX,
+              clientY: clientY,
+              identifier: 1,
+              target: child
+            }
+          ];
+          ev.clientX = clientX;
+          ev.clientY = clientY;
+          // tell gestures to not turn off mouse events
+          child.dispatchEvent(ev);
+        }
+
+        assert.equal(child.stream.length, 0, 'expected no taps on the child');
+        assert.notEqual(el.stream.length, 0, 'expected some tracks on the parent');
+      });
+    });
+
+    suite('Buttons', function() {
+      var el;
+
+      setup(function() {
+        el = document.createElement('x-buttons');
+        document.body.appendChild(el);
+      });
+
+      teardown(function() {
+        el.parentNode.removeChild(el);
+      });
+
+      suite('Down and Up', function() {
+        test('Left Mouse Button Only', function() {
+          var options = {bubbles: true};
+          var evLeftDown = new CustomEvent('mousedown', options);
+          // left button
+          evLeftDown.button = 0;
+          evLeftDown.clientX = 1;
+          var evLeftUp = new CustomEvent('mouseup', options);
+          var evRightDown = new CustomEvent('mousedown', options);
+          // right button
+          evRightDown.button = 2;
+          evRightDown.clientX = 2;
+          var evRightUp = new CustomEvent('mouseup', options);
+
+          el.dispatchEvent(evLeftDown);
+          el.dispatchEvent(evLeftUp);
+          el.dispatchEvent(evRightDown);
+          el.dispatchEvent(evRightUp);
+
+          assert.equal(el.stream.length, 2, 'only saw one up and down pair');
+          assert.equal(el.stream[0].type, 'down');
+          assert.equal(el.stream[1].type, 'up');
+          assert.equal(el.stream[0].detail.x, 1, 'only from the left button');
+        });
+
+        test('Recover from right click', function() {
+          var options = {bubbles: true};
+          var evDown = new CustomEvent('mousedown', options);
+          var evMove = new CustomEvent('mousemove', options);
+          evMove.buttons = 0;
+          var evUp = new CustomEvent('mouseup', options);
+
+          el.dispatchEvent(evDown);
+          el.dispatchEvent(evMove);
+          el.dispatchEvent(evUp);
+
+          assert.equal(el.stream.length, 2, 'always get an up');
+        });
+      });
+
+      suite('Tap', function() {
+        test('Left Mouse Button Only', function() {
+          var evMid = new CustomEvent('click', {bubbles: true});
+          evMid.button = 1;
+          var evLeft = new CustomEvent('click', {bubbles: true});
+          evLeft.button = 0;
+
+          el.dispatchEvent(evMid);
+          el.dispatchEvent(evLeft);
+
+          assert.equal(el.stream.length, 1, 'only one tap');
+        });
+      });
+
+      suite('Track', function() {
+        test('Left Mouse Button Only', function() {
+          var options = {bubbles: true};
+          var ev = new CustomEvent('mousedown', options);
+          ev.clientX = ev.clientY = 0;
+          el.dispatchEvent(ev);
+          for (var i = 0; i < 5; i++) {
+            ev = new CustomEvent('mousemove', options);
+            ev.clientX = 10 * i;
+            ev.clientY = 10 * i;
+            // left button until move 4
+            ev.buttons = (i > 3) ? 2 : 1;
+            el.dispatchEvent(ev);
+          }
+          el.dispatchEvent(new CustomEvent('mouseup', options));
+
+          // down, <skipped>, track:start, track:track, track:track, track:end, up
+          assert.equal(el.stream.length, 6);
+          assert.equal(el.stream[0].type, 'down');
+          assert.equal(el.stream[1].detail.state, 'start');
+          assert.equal(el.stream[2].detail.state, 'track');
+          assert.equal(el.stream[3].detail.state, 'track');
+          assert.equal(el.stream[4].type, 'up');
+          assert.equal(el.stream[5].detail.state, 'end');
+        });
+      });
+    });
+
+    suite('SD Polyfill', function() {
+      var el;
+      setup(function() {
+        el = document.createElement('x-document-listener');
+        document.body.appendChild(el);
+        el.setup();
+      });
+
+      teardown(function() {
+        el.teardown();
+        document.body.removeChild(el);
+      });
+
+      test('document listener works in SD polyfill', function() {
+        var ev = new CustomEvent('mousedown', {bubbles: true});
+        el.dispatchEvent(ev);
+        assert.equal(el.stream.length, 1);
+      });
+    });
+
+    suite('Reference Cleanup', function() {
+      var el;
+
+      setup(function() {
+        el = document.createElement('x-buttons');
+        document.body.appendChild(el);
+      });
+
+      teardown(function() {
+        document.body.removeChild(el);
+      });
+
+      test('down and up clear document tracking', function() {
+        var ev = new CustomEvent('mousedown', {bubbles: true});
+        el.dispatchEvent(ev);
+
+        // some recognizers do not track the document, like tap
+        var recognizers = Polymer.Gestures.recognizers.filter(function(r) {
+          return r.info.hasOwnProperty('movefn') &&
+            r.info.hasOwnProperty('upfn');
+        });
+
+        assert.isAbove(recognizers.length, 0, 'some recognizers track the document');
+
+        recognizers.forEach(function(r) {
+          assert.isFunction(r.info.movefn, r.name + ' movefn');
+          assert.isFunction(r.info.upfn, r.name + ' upfn');
+        });
+
+        ev = new CustomEvent('mouseup', {bubbles: true});
+        el.dispatchEvent(ev);
+
+        recognizers.forEach(function(r) {
+          assert.isNull(r.info.movefn, r.name + ' movefn');
+          assert.isNull(r.info.upfn, r.name + ' upfn');
+        });
+      });
+    });
   </script>
 
 </body>

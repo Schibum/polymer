@@ -105,9 +105,66 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     },
 
     /**
+     * Returns a list of nodes that are the effective childNodes. The effective
+     * childNodes list is the same as the element's childNodes except that
+     * any `<content>` elements are replaced with the list of nodes distributed
+     * to the `<content>`, the result of its `getDistributedNodes` method.
+     *
+     * @method getEffectiveChildNodes
+     * @return {Array<Node>} List of effctive child nodes.
+     */
+    getEffectiveChildNodes: function() {
+      return Polymer.dom(this).getEffectiveChildNodes();
+    },
+
+    /**
+     * Returns a list of elements that are the effective children. The effective
+     * children list is the same as the element's children except that
+     * any `<content>` elements are replaced with the list of elements
+     * distributed to the `<content>`.
+     *
+     * @method getEffectiveChildren
+     * @return {Array<Node>} List of effctive children.
+     */
+    getEffectiveChildren: function() {
+      var list = Polymer.dom(this).getEffectiveChildNodes();
+      return list.filter(function(n) {
+        return (n.nodeType === Node.ELEMENT_NODE);
+      });
+    },
+
+    /**
+     * Returns a string of text content that is the concatenation of the
+     * text content's of the element's effective childNodes (the elements
+     * returned by <a href="#getEffectiveChildNodes>getEffectiveChildNodes</a>.
+     *
+     * @method getEffectiveTextContent
+     * @return {Array<Node>} List of effctive children.
+     */
+    getEffectiveTextContent: function() {
+      var cn = this.getEffectiveChildNodes();
+      var tc = [];
+      for (var i=0, c; (c = cn[i]); i++) {
+        if (c.nodeType !== Node.COMMENT_NODE) {
+          tc.push(Polymer.dom(c).textContent);
+        }
+      }
+      return tc.join('');
+    },
+
+    queryEffectiveChildren: function(slctr) {
+      var e$ = Polymer.dom(this).queryDistributedElements(slctr);
+      return e$ && e$[0];
+    },
+
+    queryAllEffectiveChildren: function(slctr) {
+      return Polymer.dom(this).queryDistributedElements(slctr);
+    },
+
+    /**
      * Returns a list of nodes distributed to this element's `<content>`.
      *
-     * If this element contans more than one `<content>` in its local DOM,
+     * If this element contains more than one `<content>` in its local DOM,
      * an optional selector may be passed to choose the desired content.
      *
      * @method getContentChildNodes
@@ -116,15 +173,15 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
      * @return {Array<Node>} List of distributed nodes for the `<content>`.
      */
     getContentChildNodes: function(slctr) {
-      return Polymer.dom(Polymer.dom(this.root).querySelector(
-          slctr || 'content')).getDistributedNodes();
+      var content = Polymer.dom(this.root).querySelector(slctr || 'content');
+      return content ? Polymer.dom(content).getDistributedNodes() : [];
     },
 
     /**
      * Returns a list of element children distributed to this element's
      * `<content>`.
      *
-     * If this element contans more than one `<content>` in its
+     * If this element contains more than one `<content>` in its
      * local DOM, an optional selector may be passed to choose the desired
      * content.  This method differs from `getContentChildNodes` in that only
      * elements are returned.
@@ -141,31 +198,58 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       });
     },
 
+
     /**
-     * Dispatches a custom event with an optional detail object.
+     * Dispatches a custom event with an optional detail value.
      *
      * @method fire
      * @param {String} type Name of event type.
-     * @param {Object=} detail Detail object containing event-specific
+     * @param {*=} detail Detail value containing event-specific
      *   payload.
-     * @param {Object=} options Object specifying options.  These
-     *   may include `bubbles` (boolean), `cancelable` (boolean), and `node`
-     *   on which to fire the event (HTMLElement, defaults to `this`).
+     * @param {Object=} options Object specifying options.  These may include:
+     *  `bubbles` (boolean, defaults to `true`),
+     *  `cancelable` (boolean, defaults to false), and
+     *  `node` on which to fire the event (HTMLElement, defaults to `this`).
      * @return {CustomEvent} The new event that was fired.
      */
     fire: function(type, detail, options) {
       options = options || Polymer.nob;
       var node = options.node || this;
-      var detail = (detail === null || detail === undefined) ? Polymer.nob : detail;
+      detail = (detail === null || detail === undefined) ? {} : detail;
       var bubbles = options.bubbles === undefined ? true : options.bubbles;
-      var event = new CustomEvent(type, {
-        bubbles: Boolean(bubbles),
-        cancelable: Boolean(options.cancelable),
-        detail: detail
-      });
+      var cancelable = Boolean(options.cancelable);
+      var useCache = options._useCache;
+      var event = this._getEvent(type, bubbles, cancelable, useCache);
+      event.detail = detail;
+      if (useCache) {
+        this.__eventCache[type] = null;
+      }
       node.dispatchEvent(event);
+      if (useCache) {
+        this.__eventCache[type] = event;
+      }
       return event;
     },
+
+    __eventCache: {},
+
+    // NOTE: We optionally cache event objects for efficiency during high
+    // freq. opts. This option cannot be used for events which may have
+    // `stopPropagation` called on them. On Chrome and Safari (but not FF)
+    // if `stopPropagation` is called, the event cannot be reused. It does not
+    // dispatch again.
+    _getEvent: function(type, bubbles, cancelable, useCache) {
+      var event = useCache && this.__eventCache[type];
+      if (!event || ((event.bubbles != bubbles) ||
+          (event.cancelable != cancelable))) {
+        event = new Event(type, {
+          bubbles: Boolean(bubbles),
+          cancelable: cancelable
+        });
+      }
+      return event;
+    },
+
 
     /**
      * Runs a callback function asyncronously.
@@ -181,7 +265,10 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
      * @return {number} Handle that may be used to cancel the async job.
      */
     async: function(callback, waitTime) {
-      return Polymer.Async.run(callback.bind(this), waitTime);
+      var self = this;
+      return Polymer.Async.run(function() {
+        callback.call(self);
+      }, waitTime);
     },
 
     /**
@@ -198,8 +285,15 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     /**
      * Removes an item from an array, if it exists.
      *
+     * If the array is specified by path, a change notification is
+     * generated, so that observers, data bindings and computed
+     * properties watching that path can update.
+     *
+     * If the array is passed directly, **no change
+     * notification is generated**.
+     *
      * @method arrayDelete
-     * @param {String|Array} path Path torray from which to remove the item
+     * @param {String|Array} path Path to array from which to remove the item
      *   (or the array itself).
      * @param {any} item Item to remove.
      * @return {Array} Array containing item removed.
@@ -212,7 +306,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           return path.splice(index, 1);
         }
       } else {
-        var arr = this.get(path);
+        var arr = this._get(path);
         index = arr.indexOf(item);
         if (index >= 0) {
           return this.splice(path, index, 1);
@@ -264,17 +358,30 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
      *   loaded.
      * @param {Function} onerror Callback to notify when an import
      *   unsuccessfully loaded.
+     * @param {boolean} optAsync True if the import should be loaded `async`.
+     *   Defaults to `false`.
      * @return {HTMLLinkElement} The link element for the URL to be loaded.
      */
-    importHref: function(href, onload, onerror) {
+    importHref: function(href, onload, onerror, optAsync) {
       var l = document.createElement('link');
       l.rel = 'import';
       l.href = href;
+
+      optAsync = Boolean(optAsync);
+      if (optAsync) {
+        l.setAttribute('async', '');
+      }
+
+      var self = this;
       if (onload) {
-        l.onload = onload.bind(this);
+        l.onload = function(e) {
+          return onload.call(self, e);
+        }
       }
       if (onerror) {
-        l.onerror = onerror.bind(this);
+        l.onerror = function(e) {
+          return onerror.call(self, e);
+        }
       }
       document.head.appendChild(l);
       return l;
@@ -300,20 +407,26 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     },
 
     /**
-     * Copies props from a source object to target a target object.
+     * Checks whether an element is in this element's light DOM tree.
      *
-     * Note, this method ueses a simple `for...in` strategy for enumerating
-     * properties.  To ensure only `ownProperties` are copied from source
-     * to target and that accessor implementations are copied, use `extend`.
-     *
-     * @method mixin
-     * @param {Object} target Target object to copy properties to.
-     * @param {Object} source Source object to copy properties from.
+     * @method isLightDescendant
+     * @param {?Node} node The element to be checked.
+     * @return {Boolean} true if node is in this element's light DOM tree.
      */
-    mixin: function(target, source) {
-      for (var i in source) {
-        target[i] = source[i];
-      }
+    isLightDescendant: function(node) {
+      return this !== node && this.contains(node) &&
+          Polymer.dom(this).getOwnerRoot() === Polymer.dom(node).getOwnerRoot();
+    },
+
+    /**
+     * Checks whether an element is in this element's local DOM tree.
+     *
+     * @method isLocalDescendant
+     * @param {HTMLElement=} node The element to be checked.
+     * @return {Boolean} true if node is in this element's local DOM tree.
+     */
+    isLocalDescendant: function(node) {
+      return this.root === Polymer.dom(node).getOwnerRoot();
     }
 
   });

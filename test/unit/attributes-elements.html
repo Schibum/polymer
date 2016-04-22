@@ -44,6 +44,10 @@
         type: String,
         value: 'none'
       },
+      UPCASE: {
+        type: String,
+        value: 'none'
+      },
       noType: {
         value: 'none'
       },
@@ -51,8 +55,28 @@
         type: String,
         value: 'default',
         readOnly: true
+      },
+      prop: {
+        value: 'prop',
+        observer: 'propChanged'
+      },
+
+      attr1: {
+        observer: 'attr1Changed'
       }
+    },
+
+    propChangedCount: 0,
+    attr1ChangedCount: 0,
+
+    propChanged: function() {
+      this.propChangedCount++;
+    },
+
+    attr1Changed: function() {
+      this.attr1ChangedCount++;
     }
+
   });
 </script>
 
@@ -100,6 +124,11 @@
         reflectToAttribute: true,
         value: 'none'
       },
+      UPCASE: {
+        type: String,
+        reflectToAttribute: true,
+        value: 'none'
+      },
       noType: {
         value: 'none'
       },
@@ -108,17 +137,36 @@
         value: 'default',
         readOnly: true
       }
+    },
+    _warn: function() {
+      var search = Array.prototype.join.call(arguments, '');
+      if (search.indexOf('UPCASE') > -1) {
+        this.__warnedAboutUPCASE = true;
+      }
     }
   });
 </script>
 
 <dom-module id="x-compose">
   <template>
-    <x-basic id="basic" class="should-not-override"></x-basic>
+    <x-basic id="basic" prop="{{attr1}}" attr1$="{{attr1}}" class="should-not-override"></x-basic>
   </template>
 </dom-module>
 <script>
   Polymer({
-    is: 'x-compose'
+
+    is: 'x-compose',
+
+    hostAttributes: {
+      attr1: 'compose'
+    },
+
+    properties: {
+      prop2: String
+    },
+
+    ready: function() {
+      this.setAttribute('prop2', 'hi');
+    }
   });
 </script>

@@ -9,7 +9,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 -->
 <script>
 
-  Polymer = {
+  window.Polymer = {
     Settings: (function() {
       // NOTE: Users must currently opt into using ShadowDOM. They do so by doing:
       // Polymer = {dom: 'shadow'};
@@ -18,28 +18,26 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       // like: Polymer = {dom: 'shady'}
 
       // via Polymer object
-      var user = window.Polymer || {};
+      var settings = window.Polymer || {};
 
-      var wantShadow = (user.dom !== 'shady');
-      var hasShadow = Boolean(Element.prototype.createShadowRoot);
-      var nativeShadow = hasShadow && !window.ShadowDOMPolyfill;
-      var useShadow = wantShadow && hasShadow;
+      settings.wantShadow = (settings.dom !== 'shady');
+      settings.hasShadow = Boolean(Element.prototype.createShadowRoot);
+      settings.nativeShadow = settings.hasShadow && !window.ShadowDOMPolyfill;
+      settings.useShadow = settings.wantShadow && settings.hasShadow;
 
-      var hasNativeImports = Boolean('import' in document.createElement('link'));
-      var useNativeImports = hasNativeImports;
+      settings.hasNativeImports =
+        Boolean('import' in document.createElement('link'));
+      settings.useNativeImports = settings.hasNativeImports;
 
-      var useNativeCustomElements = (!window.CustomElements ||
+      settings.useNativeCustomElements = (!window.CustomElements ||
         window.CustomElements.useNative);
 
-      return {
-        wantShadow: wantShadow,
-        hasShadow: hasShadow,
-        nativeShadow: nativeShadow,
-        useShadow: useShadow,
-        useNativeShadow: useShadow && nativeShadow,
-        useNativeImports: useNativeImports,
-        useNativeCustomElements: useNativeCustomElements
-      };
+      settings.useNativeShadow = settings.useShadow && settings.nativeShadow;
+
+      settings.usePolyfillProto = !settings.useNativeCustomElements &&
+        !Object.__proto__;
+
+      return settings;
     })()
   };
 

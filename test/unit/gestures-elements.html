@@ -19,15 +19,19 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
   </style>
 
   <template>
-    <div id="div" on-tap="tapHandler"></div>
+    <div id="div"></div>
   </template>
 
   <script>
     Polymer({
       is: 'x-foo',
+      listeners: {
+        tap: 'tapHandler'
+      },
       tapHandler: function(e) {
-        this._testLocalTarget = Polymer.dom(e).localTarget;
-        this._testRootTarget = Polymer.dom(e).rootTarget;
+        var ev = Polymer.dom(e);
+        this._testLocalTarget = ev.localTarget;
+        this._testRootTarget = ev.rootTarget;
       }
     });
   </script>
@@ -36,15 +40,19 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 <dom-module id="x-app">
 
   <template>
-    <x-foo id="foo" on-tap="tapHandler"></x-foo>
+    <x-foo id="foo"></x-foo>
   </template>
 
   <script>
     Polymer({
       is: 'x-app',
+      listeners: {
+        tap: 'tapHandler'
+      },
       tapHandler: function(e) {
-        this._testLocalTarget = Polymer.dom(e).localTarget;
-        this._testRootTarget = Polymer.dom(e).rootTarget;
+        var ev = Polymer.dom(e);
+        this._testLocalTarget = ev.localTarget;
+        this._testRootTarget = ev.rootTarget;
       }
     });
   </script>
@@ -65,7 +73,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         down: 'handler',
         up: 'handler'
       },
-      handler: function(e, detail) {
+      handler: function() {
       }
     });
   </script>
@@ -82,6 +90,118 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       teardown: function() {
         this.unlisten(this, 'tap', 'handler');
       }
+    });
+  </script>
+</dom-module>
+
+<script>
+var EventCaptureBehavior = {
+  properties: {
+    stream: {
+      type: Array,
+      value: function() {
+        return [];
+      }
+    }
+  },
+  handle: function(e) {
+    this.stream.push(e);
+  }
+};
+</script>
+
+<dom-module id="x-prevent">
+  <script>
+    Polymer({
+      listeners: {
+        'down': 'prevent',
+        'up': 'handle',
+        'tap': 'handle',
+        'track': 'handle'
+      },
+      behaviors: [EventCaptureBehavior],
+      is: 'x-prevent',
+      prevent: function(e, detail) {
+        detail.prevent('tap');
+        detail.prevent('track');
+        e.preventDefault();
+        this.handle(e);
+      }
+    });
+  </script>
+</dom-module>
+
+<dom-module id="x-buttons">
+  <script>
+    Polymer({
+      is: 'x-buttons',
+      listeners: {
+        'down': 'handle',
+        'up': 'handle',
+        'tap': 'handle',
+        'track': 'handle'
+      },
+      behaviors: [EventCaptureBehavior]
+    });
+  </script>
+</dom-module>
+
+<dom-module id="x-document-listener">
+  <script>
+  Polymer({
+    is: 'x-document-listener',
+    setup: function() {
+      this.listen(document, 'down', 'handle');
+    },
+    teardown: function() {
+      this.unlisten(document, 'down', 'handle');
+    },
+    behaviors: [EventCaptureBehavior]
+  });
+  </script>
+</dom-module>
+
+<dom-module id="x-nested-child-prevent">
+  <script>
+    Polymer({
+      is: 'x-nested-child-prevent',
+      listeners: {
+        tap: 'handle'
+      },
+      behaviors: [EventCaptureBehavior]
+    });
+  </script>
+</dom-module>
+
+<dom-module id="x-nested-prevent">
+  <template>
+    <style>
+      :host {
+        position: absolute;
+        display: block;
+        background: orange;
+        height: 100px;
+        width: 100px;
+      }
+      #child {
+        position: relative;
+        display: block;
+        background: blue;
+        height: 50px;
+        width: 50px;
+        margin-top: 25px;
+        margin-left: 25px;
+      }
+    </style>
+    <x-nested-child-prevent id="child"></x-nested-child-prevent>
+  </template>
+  <script>
+    Polymer({
+      is: 'x-nested-prevent',
+      listeners: {
+        track: 'handle'
+      },
+      behaviors: [EventCaptureBehavior]
     });
   </script>
 </dom-module>

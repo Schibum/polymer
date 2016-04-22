@@ -3,6 +3,8 @@
 <a name="feature-list"></a>
 Below is a description of current Polymer features, followed by individual feature guides.
 
+See [the full Polymer.Base API documentation](http://polymer.github.io/polymer/) for details on specific methods and properties.
+
 <a name="polymer-micro"></a>
 **Basic Custom Element sugaring**
 
@@ -36,7 +38,7 @@ Below is a description of current Polymer features, followed by individual featu
 | Feature | Usage
 |---------|-------
 | [Local node marshaling](#node-marshaling) | this.$.\<id>
-| [Event listener setup](#event-listeners)| listeners: { ‘\<node>.\<event>’: ‘function’, ... }
+| [Host event listener setup](#event-listeners)| listeners: { ‘\<event>’: ‘function’, ... }
 | [Annotated event listener setup](#annotated-listeners) | \<element on-[event]=”function”>
 | [Gesture event support](#gesture-events) | \<element on-[gesture-event]=”function”>
 
@@ -75,7 +77,7 @@ Below is a description of current Polymer features, followed by individual featu
 
 | Feature | Usage
 |---------|-------
-| [Cross-scope styling](#xscope-styling) | --custom-prop: value; prop: var(--custom-prop); @apply(--custom-property-set);
+| [Cross-scope styling](#cross-scope-styling) | --custom-prop: value; prop: var(--custom-prop); @apply(--custom-property-set);
 | [External stylesheets](#external-stylesheets) | \<link rel="import" type="css" href="...">
 
 **Settings, utility functions, and layering**
@@ -165,8 +167,8 @@ MyElement = Polymer({
   is: 'my-element',
 
   factoryImpl: function(foo, bar) {
-    el.foo = foo;
-    el.configureWithBar(bar);
+    this.foo = foo;
+    this.configureWithBar(bar);
   },
 
   configureWithBar: function(bar) {
@@ -211,12 +213,11 @@ console.log(el2 instanceof HTMLInputElement); // true
 
 Polymer's Base prototype implements the standard Custom Element lifecycle callbacks to perform tasks necessary for Polymer's built-in features.  The hooks in turn call shorter-named lifecycle methods on your prototype.
 
-- `created` instead of `createdCallback`
-- `attached` instead of `attachedCallback`
-- `detached` instead of `detachedCallback`
-- `attributeChanged` instead of `attributeChangedCallback`
-
-You can always fallback to using the low-level methods if you wish (in other words, you could simply implement `createdCallback` in your prototype).
+- `created` - Called from `createdCallback` immediately after the element is created, before its template has been stamped.  Note that `properties` with side-effects (bindings, observers, computed property dependencies) must not be accessed during `created`.  In general, most lifecycle work should be performed in one of the other callbacks below.
+- `ready` (not available in `polymer-micro.html`) - Called 'bottom-up' after the element's template has been stamped and all elements inside the element's _local DOM_ have been configured (with values bound from parents, deserialized attributes, or else default values) and had their `ready` method called. Implement `ready` when it's necessary to manipulate an element's local DOM when the element is constructed.  Note that there is no guarantee of `ready` ordering between _light DOM_ parent/children, only between a host and its _local DOM_ children.
+- `attached` - Called from `attachedCallback` when the element (or one of its ancestors) has been attached to the main document.
+- `detached` - Called from `detachedCallback` when the element (or any of its ancestors) have been removed from the main document and are no longer attached.
+- `attributeChanged` - Called from `attributeChangedCallback` when an attribute changes.
 
 Example:
 
@@ -246,9 +247,6 @@ MyElement = Polymer({
 ```
 
 `Polymer.Base` also implements `registerCallback`, which will be called by `Polymer()` to allow `Polymer.Base` to supply a layering system for Polymer abstractions.
-
-See the [section on configuring elements](#configuring-elements) for a more in-depth description of the practical uses of each callback.
-
 
 <a name="property-config"></a>
 ## Configuring properties
@@ -352,7 +350,7 @@ Note: Deserialization occurs both at create time, as well as at runtime, e.g. wh
 <a name="host-attributes"></a>
 ## Static attributes on host
 
-If a custom elements needs HTML attributes set on it at create-time, these may be declared in a `hostAttributes` property on the prototype, where keys are the attribtue name and values are the values to be assigned.  Values should typically be provided as strings, as HTML attributes can only be strings; however, the standard `serialize` method is used to convert values to strings, so `true` will serialize to an empty attribute, and `false` will result in no attribtue set, and so forth (see [here](#attribute-serialization) for more details).
+If a custom elements needs HTML attributes set on it at create-time, these may be declared in a `hostAttributes` property on the prototype, where keys are the attribute name and values are the values to be assigned.  Values should typically be provided as strings, as HTML attributes can only be strings; however, the standard `serialize` method is used to convert values to strings, so `true` will serialize to an empty attribute, and `false` will result in no attribute set, and so forth (see [here](#attribute-serialization) for more details).
 
 Example:
 
@@ -390,7 +388,7 @@ Polymer supports extending custom element prototypes with shared code modules ca
 
 A behavior is simply an object that looks very similar to a typical Polymer prototype.  It may define lifecycle callbacks, `properties`, `hostAttributes`, or other features described later in this document like `observers` and `listeners`.  To add a behavior to a Polymer element definition, include it in a `behaviors` array on the prototype.
 
-Lifecycle callbacks will be called on the base prototype first, then for each behavior in the order given in the `behaviors` array.   Additionally, any non-lifecycle functions on the behavior object are mixed into the base prototype (and will overwrite the function on the prototype, if they exist); these may be useful for adding API or implementing observer or event listener callbacks defined by the behavior, for example.
+Lifecycle callbacks will be called for each behavior in the order given in the `behaviors` array first, followed by the callback on the base prototype.   Additionally, any non-lifecycle functions on the behavior object are mixed into the base prototype unless a function of the same name already exists; these may be useful for adding API or default observer or event listener callbacks defined by the behavior, for example, while allowing the base prototype to provide a more specific implementation of the behavior API when necessary.
 
 Example: `highlight-behavior.html`
 
@@ -766,7 +764,9 @@ Example:
 <a name="gesture-events"></a>
 ## Gesture events
 
-Polymer will generate and fire a custom "gesture" event for certain user interactions automatically when a declarative listener is added for the event type.  These events will fire consistenly on both touch and mouse environments, and so it is advised to listen for these events rather than their mouse- or touch-specific event counterparts for interoperability with both touch and desktop/mouse environments.  For example, `tap` should be used instead of `click` for the most reliable cross-platform results.
+Polymer will generate and fire a custom "gesture" event for certain user interactions automatically when a declarative listener is added for the event type.  These events will fire consistently on both touch and mouse environments, and so it is advised to listen for these events rather than their mouse- or touch-specific event counterparts for interoperability with both touch and desktop/mouse environments.  For example, `tap` should be used instead of `click` for the most reliable cross-platform results.
+
+For convenience, calling `preventDefault` on gesture events will prevent the native event that generated that gesture. For example, calling `preventDefault` on a `tap` event will also call `preventDefault` on the `click` event that generated the `tap`.
 
 Certain gestures will be able to control scrolling direction for touch input. For example, nodes with a listener for the `track` event will prevent scrolling by default. Elements can be override scroll direction with `this.setScrollDirection(direction, node)`, where `direction` is one of `'x'`, `'y'`, `'none'`, or `'all'`, and `node` defaults to `this`.
 
@@ -775,10 +775,12 @@ The following are the gesture event types supported, with a short description an
 * **down** - finger/button went down
   * `x` - clientX coordinate for event
   * `y` - clientY coordinate for event
+  * `prevent(type)` - a function that may be called to prevent the given gesture events. Currently supported gestures to prevent are `tap` and `track`.
   * `sourceEvent` - the original DOM event that caused the `down` action
 * **up** - finger/button went up
   * `x` - clientX coordinate for event
   * `y` - clientY coordinate for event
+  * `prevent(type)` - a function that may be called to prevent the given gesture events. Currently supported gestures to prevent are `tap` and `track`.
   * `sourceEvent` - the original DOM event that caused the `up` action
 * **tap** - down & up occurred
   * `x` - clientX coordinate for event
@@ -795,7 +797,7 @@ The following are the gesture event types supported, with a short description an
   * `dy` - change in pixels vertically since the first track event
   * `ddx` - change in pixels horizontally since last track event
   * `ddy` - change in pixels vertically since last track event
-  * `hover()` - a function that may be called to determine the element currently being hovered
+  * `hover()` - a function that may be called to determine the element currently being hovered over
 
 Example:
 
@@ -886,7 +888,7 @@ Example with `listeners`:
 
 ### Single property observation
 
-Custom element properties may be observed for changes by specifying `observer` property in the `properties` for the property that gives the name of a funciton to call.  When the property changes, the change handler will be called with the new and old values as arguments.
+Custom element properties may be observed for changes by specifying `observer` property in the `properties` for the property that gives the name of a function to call.  When the property changes, the change handler will be called with the new and old values as arguments.
 
 Example:
 
@@ -1020,7 +1022,7 @@ Polymer({
 <a name="array-observation"></a>
 ### Array observation
 
-Finally, mutations to arrays (e.g. changes resulting from calls to `push`, `pop`, `shift`, `unshift`, and `splice`, generally referred to as "splices") may be observed via the `observers` array by giving a path to an array followd by `.splices` as an argument to the observer function.  The value received by the observer for the `splices` path of an array will be a change record containing `indexSplices` and `keySplices` arrays listing the set of changes that occurred to the array, either in terms of array indicies or "keys" used by Polymer for identifying array elements.  Each `indexSplices` record contains a start `index`, array of `removed` items, and `addedCount` of items inserted.  Each `keySplices` record contains an array of `added` and `removed` keys).
+Finally, mutations to arrays (e.g. changes resulting from calls to `push`, `pop`, `shift`, `unshift`, and `splice`, generally referred to as "splices") may be observed via the `observers` array by giving a path to an array followed by `.splices` as an argument to the observer function.  The value received by the observer for the `splices` path of an array will be a change record containing `indexSplices` and `keySplices` arrays listing the set of changes that occurred to the array, either in terms of array indices or "keys" used by Polymer for identifying array elements.  Each `indexSplices` record contains a start `index`, array of `removed` items, and `addedCount` of items inserted.  Each `keySplices` record contains an array of `added` and `removed` keys).
 
 ```js
 Polymer({
@@ -1083,17 +1085,10 @@ Polymer({
 
 Properties of the custom element may be bound into text content or properties of local DOM elements using binding annotations in the template.
 
-To bind to textContent, the binding annotation must currently span the entire content of the tag:
-
 ```html
 <dom-module id="user-view">
   <template>
 
-    <!-- Supported -->
-    First: <span>{{first}}</span><br>
-    Last: <span>{{last}}</span>
-
-    <!-- Not currently supported! -->
     <div>First: {{first}}</div>
     <div>Last: {{last}}</div>
 
@@ -1288,7 +1283,7 @@ Example 5: Error / non-sensical state
 
 As mentioned above, Polymer uses an event naming convention to achieve two-way binding.  The act of two-way binding to a property using `target-prop={{hostProp}}` syntax results in Polymer adding a `<target-prop>-changed` event listener to the element by default.  All properties of a Polymer element with `notify: true` send events using this convention to notify of changes.
 
-In order to two-way bind to native elements or non-Polymer elements that do not follow this event naming convention when notifying changes, you may specify a custom event name in the curley braces, delimited with `::`.
+In order to two-way bind to native elements or non-Polymer elements that do not follow this event naming convention when notifying changes, you may specify a custom event name in the curly braces, delimited with `::`.
 
 Example:
 
@@ -1457,7 +1452,7 @@ Polymer provides an alternate binding annotation syntax to make it explicit when
 </template>
 ```
 
-Values will be serialized according to type: Arrays/Objects will be `JSON.stringify`'ed, booleans will result in a non-valued attribute to be either set or removed, and `Dates` and all primitive types will be serialized using the value returned from `toString`.
+Values will be serialized according to type: Arrays/Objects will be `JSON.stringify`'ed, Booleans will result in a non-valued attribute to be either set or removed, and `Dates` and all primitive types will be serialized using the value returned from `toString`.
 
 Again, as values must be serialized to strings when binding to attributes, it is always more performant to use property binding for pure data propagation.
 
@@ -1530,7 +1525,7 @@ In specific cases, it may be useful to keep an HTML attribute value in sync with
 ```
 
 <a name="attribute-serialization'></a>
-Values will be serialized according to type; by default Arrays/Objects will be `JSON.stringify`'ed, booleans will result in a non-valued attribute to be either set or removed, and `Dates` and all primitive types will be serialized using the value returned from `toString`.  The `serialize` method may be overridden to supply custom object serialization.
+Values will be serialized according to type; by default Arrays/Objects will be `JSON.stringify`'ed, Booleans will result in a non-valued attribute to be either set or removed, and `Dates` and all primitive types will be serialized using the value returned from `toString`.  The `serialize` method may be overridden to supply custom object serialization.
 
 <a name="computed-properties"></a>
 ## Computed properties
@@ -1538,6 +1533,8 @@ Values will be serialized according to type; by default Arrays/Objects will be `
 Polymer supports virtual properties whose values are calculated from other properties.  Computed properties can be defined in the `properties` object by providing a `computed` key mapping to a computing function.  The name of the function to compute the value is provided as a string with dependent properties as arguments in parenthesis.  Once all properties are defined (`!== undefined`), the computing function will be called to update the computed property once for each change to a dependent property.
 
 *Note, computing functions will only be called once all dependent properties are defined (`!=undefined`).  If one or more of the properties are optional, they would need default `value`'s defined in `properties` to ensure the property is computed.*
+
+Computed properties are implicitly `readOnly`, and cannot be manually set.
 
 ```html
 <dom-module id="x-custom">
@@ -1576,7 +1573,7 @@ Polymer supports virtual properties whose values are calculated from other prope
 </dom-module>
 ```
 
-Note that arguments to computing functions may be simple properties on the element, as well as all of the arguments types supported by `observers`, including [paths](#path-observation), [paths with wildcards](#deep-observation), and [paths to array splices](#array-observation).  The arguments received in the comuting function will match those described in the sections referenced above.
+Note that arguments to computing functions may be simple properties on the element, as well as all of the arguments types supported by `observers`, including [paths](#path-observation), [paths with wildcards](#deep-observation), and [paths to array splices](#array-observation).  The arguments received in the computing function will match those described in the sections referenced above.
 
 <a name="annotated-computed"></a>
 ## Annotated computed properties
@@ -1690,7 +1687,7 @@ Generally, read-only properties should also be set to `notify: true` such that t
 
 Shadow DOM (and its approximation via Shady DOM) bring much needed benefits of scoping and style encapsulation to web development, making it safer and easier to reason about the effects of CSS on parts of your application.  Styles do not leak into the local DOM from above, and styles do not leak from one local DOM into the local DOM of other elements inside.
 
-This is great for *protecting* scopes from unwanted style leakage.  But what about when you intentionally want to *customize* the style of a custom element's local DOM, as the user of an element?  This often comes up under the umbrella of "theming".  For example a "custom-checkbox" element that may interally use a `.checked` class can protect itself from being affected by CSS from other components that may also happen to use a `.checked` class.  However, as the user of the checkbox you may wish to intentionally change the color of the check to match your product's branding, for example.  The "protection" that Shadow DOM provides at the same time introduces a practical barrier to "theming" use cases.
+This is great for *protecting* scopes from unwanted style leakage.  But what about when you intentionally want to *customize* the style of a custom element's local DOM, as the user of an element?  This often comes up under the umbrella of "theming".  For example a "custom-checkbox" element that may internally use a `.checked` class can protect itself from being affected by CSS from other components that may also happen to use a `.checked` class.  However, as the user of the checkbox you may wish to intentionally change the color of the check to match your product's branding, for example.  The "protection" that Shadow DOM provides at the same time introduces a practical barrier to "theming" use cases.
 
 One solution the Shadow DOM spec authors provided to address the theming problem are the `/deep/` and `::shadow` combinators, which allow writing rules that pierce through the Shadow DOM encapsulation boundary.  Although Polymer 0.5 promoted this mechanism for theming, it was ultimately unsatisfying for several reasons:
 
@@ -1865,7 +1862,7 @@ Example:
     <my-toolbar>My awesome app</my-toolbar>
     <button on-tap="changeTheme">Change theme</button>
   </template>
-  
+
   <script>
     Polymer({
       is: 'x-custom',
@@ -1881,7 +1878,7 @@ Example:
 <a name="x-styling-limitations"></a>
 ### Custom Properties Shim - Limitations and API details
 
-Cross-platform support for custom properties is provided in Polymer by a Javascript library that approximates the capabilities of the CSS Variables specification  *for the specific use case of theming custom elements*, while also extending it to add the capability to mixin property sets to rules as described above.  **It is important to note that this is not a full polyfill**, as doing so would be prohibitively expensive; rather this is a shim that is inspired by that specification and trades off aspects of the full dynamism possible in CSS with practicality and performance.
+Cross-platform support for custom properties is provided in Polymer by a JavaScript library that approximates the capabilities of the CSS Variables specification  *for the specific use case of theming custom elements*, while also extending it to add the capability to mixin property sets to rules as described above.  **It is important to note that this is not a full polyfill**, as doing so would be prohibitively expensive; rather this is a shim that is inspired by that specification and trades off aspects of the full dynamism possible in CSS with practicality and performance.
 
 Below are current limitations of this system.  Improvements to performance and dynamism will continue to be explored.
 
@@ -1934,7 +1931,7 @@ Below are current limitations of this system.  Improvements to performance and d
       --title-background: yellow;
     }
     ```
-* Unlike normal CSS inheritance which flows from parent to child, custom properties in Polymer's shim can only change when inherited by a custom element from rules that set properties in scope(s) above it, or in a `:host` rule for that scope.  Within a given element's local DOM scope, a custom property can only have a single value.  Calculating property changes within a scope would be prohibitvely expensive for the shim and are not required to achieve cross-scope styling for custom elements, which is the primary goal of the shim.
+* Unlike normal CSS inheritance which flows from parent to child, custom properties in Polymer's shim can only change when inherited by a custom element from rules that set properties in scope(s) above it, or in a `:host` rule for that scope.  Within a given element's local DOM scope, a custom property can only have a single value.  Calculating property changes within a scope would be prohibitively expensive for the shim and are not required to achieve cross-scope styling for custom elements, which is the primary goal of the shim.
 
    ```html
    <dom-module>
@@ -2042,16 +2039,22 @@ Example:
 <a name="utility-functions"></a>
 ## Utility Functions
 
-Polymer's Base prototype provides a set of useful convenience/utility functions for instances to use.  See API documentation for more details.
+Polymer's Base prototype provides a set of useful convenience/utility functions for instances to use.  [See API documentation for more details](http://polymer.github.io/polymer/).
 
-* toggleClass: function(name, bool, [node])
-* toggleAttribute: function(name, bool, [node])
-* attributeFollows: function(name, neo, old)
-* fire: function(type, [detail], [onNode], [bubbles], [cancelable])
-* async: function(method)
-* transform: function(node, transform)
-* translate3d: function(node, x, y, z)
-* importHref: function(href, onload, onerror)
+* toggleClass
+* toggleAttribute
+* classFollows
+* attributeFollows
+* getContentChildNodes
+* getContentChildren
+* fire
+* async
+* cancelAsync
+* arrayDelete
+* transform
+* translate3d
+* importHref
+* create
 
 <a name="settings"></a>
 ## Global Polymer settings
@@ -2231,7 +2234,7 @@ Example:
 </dom-module>
 ```
 
-Note, since it is generally much faster to hide/show elements rather than create/destroy them, conditional templates are only useful to save initial creation cost when the elements being stamped are relatively heavyweight and the conditional may rarely (or never) be true in given useages.  Otherwise, liberal use of conditional templates can actually *add* significant runtime performance overhead.
+Note, since it is generally much faster to hide/show elements rather than create/destroy them, conditional templates are only useful to save initial creation cost when the elements being stamped are relatively heavyweight and the conditional may rarely (or never) be true in given usages.  Otherwise, liberal use of conditional templates can actually *add* significant runtime performance overhead.
 
 Consider an app with 4 screens, plus an optional admin screen.  If most users will use all 4 screens during normal use of the app, it is generally better to incur the cost of stamping those elements once at startup (where some app initialization time is expected) and simply hide/show the screens as the user navigates through the app, rather than re-create and destroy all the elements of each screen as the user navigates.  Using a conditional template here may be a poor choice, since although it may save time at startup by stamping only the first screen, that saved time gets shifted to runtime latency for each user interaction, since the time to show the second screen will be *slower* as it must create the second screen from scratch rather than simply showing that screen.  Hiding/showing elements is as simple as attribute-binding to the `hidden` attribute (e.g. `<div hidden$="{{!shouldShow}}">`), and does not require conditional templating at all.
 
@@ -2251,7 +2254,7 @@ In order to use Polymer bindings without defining a new custom element, you may 
   <meta charset="utf-8">
   <script src="components/webcomponentsjs/webcomponents-lite.js"></script>
   <link rel="import" href="components/polymer/polymer.html">
-  <link rel="import" href="components/core-ajax/core-ajax.html">
+  <link rel="import" href="components/iron-ajax/iron-ajax.html">
 
 </head>
 <body>
@@ -2260,7 +2263,7 @@ In order to use Polymer bindings without defining a new custom element, you may 
   <!-- allow use of Polymer bindings main document -->
   <template is="dom-bind">
 
-    <core-ajax url="http://..." lastresponse="{{data}}"></core-ajax>
+    <iron-ajax url="http://..." lastresponse="{{data}}" auto></iron-ajax>
 
     <template is="dom-repeat" items="{{data}}">
         <div><span>{{item.first}}</span> <span>{{item.last}}</span></div>
@@ -2281,6 +2284,6 @@ Higher layers depend on lower layers, and elements requiring lower layers will a
 
 * polymer-micro.html: [Polymer micro features](#polymer-micro) (bare-minum Custom Element sugaring)
 * polymer-mini.html: [Polymer mini features](#polymer-mini) (template stamped into "local DOM" and tree lifecycle)
-* polymer.html: [Polymer standard features](#polymer-standard) (all other features: declarative data binding and event handlers, property nofication, computed properties, and the set of helper custom elements provided with Polymer)
+* polymer.html: [Polymer standard features](#polymer-standard) (all other features: declarative data binding and event handlers, property notification, computed properties, and the set of helper custom elements provided with Polymer)
 
 This layering is subject to change in the future and the number of layers may be reduced.
