@@ -42,7 +42,22 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
   });
 
-  suite('constructor', function() {
+  suite('type checking & constructor', function() {
+
+    test('Polymer.isInstance for non-instance', function() {
+      var el = document.createElement('div');
+      assert.isTrue(Polymer.instanceof(el, HTMLElement));
+      assert.isTrue(Polymer.instanceof(el, HTMLDivElement));
+      assert.isFalse(Polymer.isInstance(el));
+    });
+
+    test('document.createElement', function() {
+      var MyElement = Polymer({is: 'my-basic'});
+      var el = document.createElement('my-basic');
+      assert.isTrue(Polymer.instanceof(el, HTMLElement));
+      assert.isTrue(Polymer.instanceof(el, MyElement));
+      assert.isTrue(Polymer.isInstance(el));
+    });
 
     test('normal constructor', function() {
       var MyElement = Polymer({is: 'my-element'});
@@ -53,6 +68,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         assert.instanceOf(el, MyElement, 'Instance of MyElement');
       }
       assert.instanceOf(el, HTMLElement, 'Instance of HTMLElement');
+      assert.isTrue(Polymer.instanceof(el, HTMLElement));
+      assert.isTrue(Polymer.instanceof(el, MyElement));
+      assert.isTrue(Polymer.isInstance(el));
     });
 
     test('type-extension constructor', function() {
@@ -62,8 +80,12 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       if (Object.__proto__) {
         // instanceof Constructor only supported where proto swizzling is possible
         assert.instanceOf(el, MyInput, 'Instance of MyInput');
+        assert.instanceOf(el, HTMLElement, 'Instance of HTMLInputElement');
       }
-      assert.instanceOf(el, HTMLElement, 'Instance of HTMLInputElement');
+      assert.isTrue(Polymer.instanceof(el, HTMLInputElement));
+      assert.isTrue(Polymer.instanceof(el, HTMLElement));
+      assert.isTrue(Polymer.instanceof(el, MyInput));
+      assert.isTrue(Polymer.isInstance(el));
     });
 
     test('custom constructor', function() {
@@ -81,8 +103,42 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         assert.instanceOf(el, HTMLElement, 'Instance of HTMLElement');
       }
       assert.equal(el.title, 'my title', 'Argument passed to constructor');
+      assert.isTrue(Polymer.instanceof(el, HTMLElement));
+      assert.isTrue(Polymer.instanceof(el, MyElement2));
+      assert.isTrue(Polymer.isInstance(el));
     });
 
+    test('imperative dom-module', function() {
+      var d = document.createElement('dom-module');
+      var c = document.createElement('div');
+      d.appendChild(c);
+      d.register('my-module');
+      var lookup = document.createElement('dom-module');
+      assert.equal(lookup.import('my-module', 'div'), c);
+    });
+
+    test('mixed-case is (element type) forced to lowercase', function() {
+      var a = document.createElement('x-mixed-case');
+      assert.equal(a.is, 'x-mixed-case');
+      var b = document.createElement('button', 'x-mixed-case-button');
+      assert.equal(b.is, 'x-mixed-case-button');
+      assert.equal(b.getAttribute('is'), 'x-mixed-case-button');
+    });
+
+    test('input to Polymer is a `class`', function() {
+      var _class = function() {};
+      _class.prototype = {
+        is: 'x-class-as-argument-test'
+      };
+      Polymer(_class);
+      var a = document.createElement('x-class-as-argument-test');
+      assert.equal(a.is, 'x-class-as-argument-test');
+    });
+
+    test('input to Polymer is falsey', function() {
+      var a = document.createElement('falsey-polymer-arg');
+      assert.equal(a.is, 'falsey-polymer-arg');
+    });
   });
 
 </script>

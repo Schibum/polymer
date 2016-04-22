@@ -34,16 +34,19 @@
 <dom-module id="x-nested-if">
   <template>
     <template is="dom-if" id="if-1" if="{{shouldStamp}}" on-dom-change="domUpdateHandler">
+      <!-- Comments should be good -->
       <x-foo on-test1="testHandler1"
              prop="{{prop}}"
              item-prop="{{item.prop}}">
       </x-foo>
       <template is="dom-if" id="if-2" if="{{shouldStamp}}">
+        <!-- Comments should be good -->
         <x-foo on-test2="testHandler2"
                prop="{{prop}}"
                item-prop="{{item.prop}}">
         </x-foo>
         <template is="dom-if" id="if-3" if="{{shouldStamp}}">
+        <!-- Comments should be good -->
           <x-foo on-test3="testHandler3"
                  prop="{{prop}}"
                  item-prop="{{item.prop}}">
@@ -81,14 +84,17 @@
 <dom-module id="x-nested-if-configured">
   <template>
     <template is="dom-if" id="if-1" if="{{shouldStamp}}">
+      <!-- Comments should be good -->
       <x-foo prop="{{prop}}"
              item-prop="{{item.prop}}">
       </x-foo>
       <template is="dom-if" id="if-2" if="{{shouldStamp}}">
+        <!-- Comments should be good -->
         <x-foo prop="{{prop}}"
                item-prop="{{item.prop}}">
         </x-foo>
         <template is="dom-if" id="if-3" if="{{shouldStamp}}">
+          <!-- Comments should be good -->
           <x-foo prop="{{prop}}"
                  item-prop="{{item.prop}}">
           </x-foo>
@@ -105,7 +111,7 @@
         value: true
       },
       prop: {
-        value: 'outer',
+        value: 'outer'
       },
       item: {
         value: function() { return {prop: 'outerItem'}; }
@@ -135,13 +141,13 @@
     is: 'x-nested-if-individual',
     properties: {
       prop1: {
-        value: 'prop1',
+        value: 'prop1'
       },
       prop2: {
-        value: 'prop2',
+        value: 'prop2'
       },
       prop3: {
-        value: 'prop3',
+        value: 'prop3'
       },
       item: {
         value: function() { return {prop: 'outerItem'}; }
@@ -152,3 +158,49 @@
     }
   });
 </script>
+
+<dom-module id="x-textcontent">
+  <template>
+    <template id="domIf" is="dom-if" if>
+      <div>1</div>
+      <div>2</div>
+      <div>3</div>
+      {{text}}
+      <div>4</div>
+    </template>
+  </template>
+  <script>
+  Polymer({
+    is: 'x-textcontent',
+    properties: {
+      text: {
+        value: 'Stuff'
+      }
+    }
+  });
+  </script>
+</dom-module>
+
+<dom-module id="x-host">
+  <template>
+    <template id="domif" is="dom-if" if>
+      <x-client></x-client>
+      <x-client></x-client>
+      <x-client></x-client>
+    </template>
+  </template>
+  <script>
+  Polymer({
+    is: 'x-host'
+  });
+  Polymer({
+    is: 'x-client',
+    statics: {
+      uid: 0
+    },
+    ready: function() {
+      this.uid = this.statics.uid++;
+    }
+  });
+  </script>
+</dom-module>
