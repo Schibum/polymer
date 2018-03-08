@@ -14,9 +14,7 @@ The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
 The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
 Code distributed by Google as part of the polymer project is also
 subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
---><link rel="import" href="polymer-mini.html">
-
-<script>Polymer.nar = [];
+--><link rel="import" href="polymer-mini.html"><script>Polymer.nar = [];
 Polymer.Annotations = {
 parseAnnotations: function (template) {
 var list = [];
@@ -674,7 +672,10 @@ deepTargetFind: function (x, y) {
 var node = document.elementFromPoint(x, y);
 var next = node;
 while (next && next.shadowRoot) {
-next = next.shadowRoot.elementFromPoint(x, y);
+var n = next.shadowRoot.elementFromPoint(x, y);
+if (n === next)
+break;
+next = n;
 if (next) {
 node = next;
 }
@@ -2484,7 +2485,7 @@ MIXIN_RULE: 1000
 OPEN_BRACE: '{',
 CLOSE_BRACE: '}',
 _rx: {
-comments: /\/\*[^*]*\*+([^\/*][^*]*\*+)*\//gim,
+comments: /\/\*[^*]*\*+([^/*][^*]*\*+)*\//gim,
 port: /@import[^;]*;/gim,
 customProp: /(?:^[^;\-\s}]+)?--[^;{}]*?:[^{};]*?(?:[;\n]|$)/gim,
 mixinProp: /(?:^[^;\-\s}]+)?--[^;{}]*?:[^{};]*?{[^}]*?}(?:[;\n]|$)?/gim,
@@ -4802,26 +4803,6 @@ this._insertChildren();
 this.fire('dom-change');
 }
 });</script>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
