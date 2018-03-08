@@ -184,7 +184,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       // if there is not a shadowroot, exit the loop
       while (next && next.shadowRoot) {
         // if there is a node at x/y in the shadowroot, look deeper
-        next = next.shadowRoot.elementFromPoint(x, y);
+        var n = next.shadowRoot.elementFromPoint(x, y);
+        if (n === next) break;
+        next = n;
         if (next) {
           node = next;
         }
